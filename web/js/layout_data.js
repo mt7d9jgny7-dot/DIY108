@@ -1,0 +1,86 @@
+const customLayout = [
+    { label: 'Esc', x: 0, y: 0, w: 1, h: 1, row: 6, col: 1 }, { label: 'F1', x: 2, y: 0, w: 1, h: 1, row: 0, col: 2 },
+    { label: 'F2', x: 3, y: 0, w: 1, h: 1, row: 0, col: 3 }, { label: 'F3', x: 4, y: 0, w: 1, h: 1, row: 5, col: 3 },
+    { label: 'F4', x: 5, y: 0, w: 1, h: 1, row: 6, col: 3 }, { label: 'F5', x: 6.5, y: 0, w: 1, h: 1, row: 1, col: 0 },
+    { label: 'F6', x: 7.5, y: 0, w: 1, h: 1, row: 6, col: 7 }, { label: 'F7', x: 8.5, y: 0, w: 1, h: 1, row: 5, col: 8 },
+    { label: 'F8', x: 9.5, y: 0, w: 1, h: 1, row: 0, col: 8 }, { label: 'F9', x: 11, y: 0, w: 1, h: 1, row: 0, col: 11 },
+    { label: 'F10', x: 12, y: 0, w: 1, h: 1, row: 1, col: 11 }, { label: 'F11', x: 13, y: 0, w: 1, h: 1, row: 6, col: 11 },
+    { label: 'F12', x: 14, y: 0, w: 1, h: 1, row: 7, col: 11 }, { label: 'PrtSc', x: 15.5, y: 0, w: 1, h: 1, row: 1, col: 4 },
+    { label: 'Scrlk', x: 16.5, y: 0, w: 1, h: 1, row: 2, col: 4 }, { label: 'Pause', x: 17.5, y: 0, w: 1, h: 1, row: 2, col: 0 },
+    { label: 'CAL', x: 18.5, y: 0, w: 1, h: 1, row: 7, col: 10 }, { label: '静音', x: 19.5, y: 0, w: 1, h: 1, row: 0, col: 12 },
+    { label: '音-', x: 20.5, y: 0, w: 1, h: 1, row: 6, col: 13 }, { label: '音+', x: 21.5, y: 0, w: 1, h: 1, row: 4, col: 13 },
+
+    { label: '~', x: 0, y: 1, w: 1, h: 1, row: 0, col: 1 }, { label: '1', x: 1, y: 1, w: 1, h: 1, row: 1, col: 1 },
+    { label: '2', x: 2, y: 1, w: 1, h: 1, row: 1, col: 2 }, { label: '3', x: 3, y: 1, w: 1, h: 1, row: 1, col: 3 },
+    { label: '4', x: 4, y: 1, w: 1, h: 1, row: 1, col: 5 }, { label: '5', x: 5, y: 1, w: 1, h: 1, row: 0, col: 5 },
+    { label: '6', x: 6, y: 1, w: 1, h: 1, row: 0, col: 6 }, { label: '7', x: 7, y: 1, w: 1, h: 1, row: 1, col: 6 },
+    { label: '8', x: 8, y: 1, w: 1, h: 1, row: 1, col: 7 }, { label: '9', x: 9, y: 1, w: 1, h: 1, row: 1, col: 8 },
+    { label: '0', x: 10, y: 1, w: 1, h: 1, row: 1, col: 9 }, { label: '-', x: 11, y: 1, w: 1, h: 1, row: 0, col: 9 },
+    { label: '=', x: 12, y: 1, w: 1, h: 1, row: 0, col: 7 }, { label: 'Backspace', x: 13, y: 1, w: 2, h: 1, row: 5, col: 11 },
+    { label: 'INS', x: 15.5, y: 1, w: 1, h: 1, row: 0, col: 16 }, { label: 'HOME', x: 16.5, y: 1, w: 1, h: 1, row: 0, col: 15 },
+    { label: 'PGUP', x: 17.5, y: 1, w: 1, h: 1, row: 0, col: 17 }, { label: 'NUM', x: 18.5, y: 1, w: 1, h: 1, row: 4, col: 14 },
+    { label: '/', x: 19.5, y: 1, w: 1, h: 1, row: 4, col: 16 }, { label: '*', x: 20.5, y: 1, w: 1, h: 1, row: 4, col: 17 },
+    { label: '-', x: 21.5, y: 1, w: 1, h: 1, row: 7, col: 17 },
+
+    { label: 'Tab', x: 0, y: 2, w: 1.5, h: 1, row: 5, col: 1 }, { label: 'Q', x: 1.5, y: 2, w: 1, h: 1, row: 2, col: 1 },
+    { label: 'W', x: 2.5, y: 2, w: 1, h: 1, row: 2, col: 2 }, { label: 'E', x: 3.5, y: 2, w: 1, h: 1, row: 2, col: 3 },
+    { label: 'R', x: 4.5, y: 2, w: 1, h: 1, row: 2, col: 5 }, { label: 'T', x: 5.5, y: 2, w: 1, h: 1, row: 5, col: 5 },
+    { label: 'Y', x: 6.5, y: 2, w: 1, h: 1, row: 5, col: 6 }, { label: 'U', x: 7.5, y: 2, w: 1, h: 1, row: 2, col: 6 },
+    { label: 'I', x: 8.5, y: 2, w: 1, h: 1, row: 2, col: 7 }, { label: 'O', x: 9.5, y: 2, w: 1, h: 1, row: 2, col: 8 },
+    { label: 'P', x: 10.5, y: 2, w: 1, h: 1, row: 2, col: 9 }, { label: '[', x: 11.5, y: 2, w: 1, h: 1, row: 5, col: 9 },
+    { label: ']', x: 12.5, y: 2, w: 1, h: 1, row: 5, col: 7 }, { label: '\\', x: 13.5, y: 2, w: 1.5, h: 1, row: 3, col: 11 },
+    { label: 'DEL', x: 15.5, y: 2, w: 1, h: 1, row: 0, col: 14 }, { label: 'END', x: 16.5, y: 2, w: 1, h: 1, row: 1, col: 15 },
+    { label: 'PGDN', x: 17.5, y: 2, w: 1, h: 1, row: 1, col: 17 }, { label: '7', x: 18.5, y: 2, w: 1, h: 1, row: 2, col: 14 },
+    { label: '8', x: 19.5, y: 2, w: 1, h: 1, row: 2, col: 16 }, { label: '9', x: 20.5, y: 2, w: 1, h: 1, row: 2, col: 17 },
+    { label: '+', x: 21.5, y: 2, w: 1, h: 2, row: 2, col: 15 },
+
+    { label: 'Caps', x: 0, y: 3, w: 1.75, h: 1, row: 5, col: 2 }, { label: 'A', x: 1.75, y: 3, w: 1, h: 1, row: 3, col: 1 },
+    { label: 'S', x: 2.75, y: 3, w: 1, h: 1, row: 3, col: 2 }, { label: 'D', x: 3.75, y: 3, w: 1, h: 1, row: 3, col: 3 },
+    { label: 'F', x: 4.75, y: 3, w: 1, h: 1, row: 3, col: 5 }, { label: 'G', x: 5.75, y: 3, w: 1, h: 1, row: 6, col: 5 },
+    { label: 'H', x: 6.75, y: 3, w: 1, h: 1, row: 6, col: 6 }, { label: 'J', x: 7.75, y: 3, w: 1, h: 1, row: 3, col: 6 },
+    { label: 'K', x: 8.75, y: 3, w: 1, h: 1, row: 3, col: 7 }, { label: 'L', x: 9.75, y: 3, w: 1, h: 1, row: 3, col: 8 },
+    { label: ';', x: 10.75, y: 3, w: 1, h: 1, row: 3, col: 9 }, { label: '\'', x: 11.75, y: 3, w: 1, h: 1, row: 6, col: 9 },
+    { label: 'Enter', x: 12.75, y: 3, w: 2.25, h: 1, row: 4, col: 11 }, { label: '4', x: 18.5, y: 3, w: 1, h: 1, row: 5, col: 14 },
+    { label: '5', x: 19.5, y: 3, w: 1, h: 1, row: 5, col: 16 }, { label: '6', x: 20.5, y: 3, w: 1, h: 1, row: 5, col: 17 },
+    { label: 'Enter', x: 21.5, y: 4, w: 1, h: 2, row: 3, col: 15 },
+
+    { label: 'Shift', x: 0, y: 4, w: 2.25, h: 1, row: 5, col: 13 }, { label: 'Z', x: 2.25, y: 4, w: 1, h: 1, row: 4, col: 1 },
+    { label: 'X', x: 3.25, y: 4, w: 1, h: 1, row: 4, col: 2 }, { label: 'C', x: 4.25, y: 4, w: 1, h: 1, row: 4, col: 3 },
+    { label: 'V', x: 5.25, y: 4, w: 1, h: 1, row: 4, col: 5 }, { label: 'B', x: 6.25, y: 4, w: 1, h: 1, row: 7, col: 5 },
+    { label: 'N', x: 7.25, y: 4, w: 1, h: 1, row: 7, col: 6 }, { label: 'M', x: 8.25, y: 4, w: 1, h: 1, row: 4, col: 6 },
+    { label: ',', x: 9.25, y: 4, w: 1, h: 1, row: 4, col: 7 }, { label: '.', x: 10.25, y: 4, w: 1, h: 1, row: 4, col: 8 },
+    { label: '/', x: 11.25, y: 4, w: 1, h: 1, row: 7, col: 9 }, { label: 'Shift', x: 12.25, y: 4, w: 2.75, h: 1, row: 3, col: 13 },
+    { label: '↑', x: 16.5, y: 4, w: 1, h: 1, row: 6, col: 15 }, { label: '1', x: 18.5, y: 4, w: 1, h: 1, row: 3, col: 14 },
+    { label: '2', x: 19.5, y: 4, w: 1, h: 1, row: 3, col: 16 }, { label: '3', x: 20.5, y: 4, w: 1, h: 1, row: 3, col: 17 },
+
+    { label: 'Ctrl', x: 0, y: 5, w: 1.25, h: 1, row: 0, col: 0 }, { label: 'Win', x: 1.25, y: 5, w: 1.25, h: 1, row: 5, col: 12 },
+    { label: 'Alt', x: 2.5, y: 5, w: 1.25, h: 1, row: 6, col: 4 }, { label: 'Space', x: 3.75, y: 5, w: 6.25, h: 1, row: 6, col: 14 },
+    { label: 'Alt', x: 10, y: 5, w: 1.25, h: 1, row: 7, col: 4 }, { label: 'Win', x: 11.25, y: 5, w: 1.25, h: 1, row: 3, col: 10 },
+    { label: 'Fn', x: 12.5, y: 5, w: 1.25, h: 1, row: 3, col: 4 }, { label: 'Ctrl', x: 13.75, y: 5, w: 1.25, h: 1, row: 4, col: 0 },
+    { label: '←', x: 15.5, y: 5, w: 1, h: 1, row: 7, col: 15 }, { label: '↓', x: 16.5, y: 5, w: 1, h: 1, row: 7, col: 14 },
+    { label: '→', x: 17.5, y: 5, w: 1, h: 1, row: 7, col: 16 }, { label: '0', x: 18.5, y: 5, w: 2, h: 1, row: 6, col: 16 },
+    { label: '.', x: 20.5, y: 5, w: 1, h: 1, row: 6, col: 17 }
+];
+
+const defaultKeymapData = [
+    [
+        [0x00E0, 0x0035, 0x003A, 0x003B, 0x0000, 0x0022, 0x0023, 0x002E, 0x0041, 0x002D, 0x0000, 0x0042, 0x0200, 0x0000, 0x004C, 0x004A, 0x0049, 0x004B],
+        [0x003E, 0x001E, 0x001F, 0x0020, 0x0046, 0x0021, 0x0024, 0x0025, 0x0026, 0x0027, 0x0000, 0x0043, 0x0000, 0x0000, 0x0000, 0x004D, 0x0000, 0x004E],
+        [0x0048, 0x0014, 0x001A, 0x0008, 0x0047, 0x0015, 0x0018, 0x000C, 0x0012, 0x0013, 0x0000, 0x0000, 0x0000, 0x0000, 0x005F, 0x0057, 0x0060, 0x0061],
+        [0x0000, 0x0004, 0x0016, 0x0007, 0x00FF, 0x0009, 0x000D, 0x000E, 0x000F, 0x0033, 0x00E7, 0x0031, 0x0000, 0x00E5, 0x0059, 0x0058, 0x005A, 0x005B],
+        [0x00E4, 0x001D, 0x001B, 0x0006, 0x0000, 0x0019, 0x0010, 0x0036, 0x0037, 0x0000, 0x0000, 0x0028, 0x0000, 0x0201, 0x0053, 0x0000, 0x0054, 0x0055],
+        [0x0000, 0x002B, 0x0039, 0x003C, 0x0000, 0x0017, 0x001C, 0x0030, 0x0040, 0x002F, 0x0000, 0x002A, 0x00E3, 0x00E1, 0x005C, 0x0000, 0x005D, 0x005E],
+        [0x0000, 0x0029, 0x00E2, 0x003D, 0x00E2, 0x000A, 0x000B, 0x003F, 0x0000, 0x0034, 0x0000, 0x0044, 0x0000, 0x0202, 0x002C, 0x0052, 0x0062, 0x0063],
+        [0x0000, 0x0000, 0x0000, 0x0000, 0x00E6, 0x0005, 0x0011, 0x0000, 0x0000, 0x0038, 0x0207, 0x0045, 0x0000, 0x0000, 0x0051, 0x0050, 0x004F, 0x0056]
+    ],
+    [
+        [0x0200, 0x0202, 0x0201, 0x0203, 0x0205, 0x0204, 0x0206, 0x020E, 0x020F, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000],
+        [0x020C, 0x020D, 0x020B, 0x020A, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000],
+        [0x0000, 0x0000, 0x0100, 0x0000, 0x0000, 0x0104, 0x0105, 0x0106, 0x0107, 0x0108, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000],
+        [0x0000, 0x0102, 0x0101, 0x0103, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000],
+        [0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000],
+        [0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000],
+        [0x0210, 0x0211, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000],
+        [0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000]
+    ]
+];
