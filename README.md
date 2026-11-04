@@ -19,22 +19,38 @@
 注意：若 PCB 走线不同，请修改 matrix.c 中的 ROWS 和 COLS 数组。
 
 ## 工程结构
-
-- `.github/workflows/build.yml`：GitHub Actions 自动编译工作流。
-- `web/`：网页驱动文件夹
-  - `common.js`：网页公共逻辑与 WebHID 通信封装。
-  - `index.html`：可视化网页驱动的入口页面。
-  - `style.css`：网页样式表。
-- `CMakeLists.txt`：CMake 构建配置文件。
-- `hid.c` / `hid.h`：业务层，负责 HID 报文分发与 WebHID 分包重组。
-- `keycodes.h`：所有 HID 键码、鼠标、多媒体及宏触发键定义。
-- `keymap.c` / `keymap.h`：数据层，默认键位表、Flash 读写与时间戳校验。
-- `macro.c` / `macro.h`：引擎层，宏动作解析与播放状态机。
-- `main.c`：极简主循环，负责各模块调度。
-- `matrix.c` / `matrix.h`：硬件层，引脚初始化、矩阵扫描与去抖。
-- `tusb_config.h`：TinyUSB 配置文件。
-- `usb_descriptors.c`：USB 复合设备与 HID 描述符定义。
-- `README.md`：项目说明文档。
+DIY108/
+├── .github/workflows/build.yml # GitHub Actions 自动编译工作流
+├── include/                    # 固件头文件目录
+│   ├── hid.h
+│   ├── keycodes.h              # 所有 HID 键码、鼠标、多媒体及宏触发键定义
+│   ├── keymap.h
+│   ├── macro.h
+│   ├── matrix.h
+│   └── tusb_config.h
+├── src/                        # 固件源文件目录
+│   ├── hid.c                   # HID 报文分发与 WebHID 分包重组
+│   ├── keymap.c                # 默认键位表、Flash 读写逻辑
+│   ├── macro.c                 # 宏动作解析与播放状态机
+│   ├── main.c                  # 极简主循环，模块调度
+│   ├── matrix.c                # 硬件层，引脚初始化、矩阵扫描与去抖
+│   └── usb_descriptors.c       # USB 复合设备与 HID 描述符定义
+├── web/                        # 网页驱动前端目录
+│   ├── css/
+│   │   └── style.css           # 网页样式表
+│   ├── js/
+│   │   ├── app.js              # 页面初始化与 Tab 切换逻辑
+│   │   ├── config.js           # 全局常量定义
+│   │   ├── device_conn.js      # WebHID 连接与断开
+│   │   ├── device_io.js        # 网页与键盘的读写交互逻辑
+│   │   ├── key_picker.js       # 键码选择弹窗
+│   │   ├── keycodes.js         # 前端键码映射表
+│   │   ├── keyboard_ui.js      # 108键键盘可视化渲染
+│   │   ├── layout_data.js      # 键盘物理坐标数据
+│   │   └── macro_ui.js         # 宏编辑器与在线录制逻辑
+│   └── index.html              # 网页入口文件
+├── CMakeLists.txt              # CMake 构建配置
+└── README.md                   # 项目说明文档
 
 ## FN 层按键说明
 
