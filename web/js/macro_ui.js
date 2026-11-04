@@ -64,6 +64,7 @@ function addMacroAction(typeStr) {
 // 宏录制逻辑
 let isRecording = false;
 let lastRecordTime = 0;
+let activeRecordKeys = new Set(); // 🔥 记录当前按住未松开的键
 
 function toggleMacroRecording() {
     isRecording = !isRecording;
@@ -72,6 +73,7 @@ function toggleMacroRecording() {
     
     if (isRecording) {
         macros[currentMacroId] = []; 
+        activeRecordKeys.clear();
         lastRecordTime = performance.now();
         btn.innerText = "⏹️ 停止录制";
         btn.style.background = "#ef4444";
@@ -83,6 +85,15 @@ function toggleMacroRecording() {
         btn.style.background = "";
         window.removeEventListener('keydown', onRecordKeyDown);
         window.removeEventListener('keyup', onRecordKeyUp);
+        
+        // 🔥 关键修复：如果停止录制时还有键被按住，自动补全抬起动作，防止宏死锁
+        if (activeRecordKeys.size > 0) {
+            activeRecordKeys.forEach(code => {
+                macros[currentMacroId].push({ type: 2, value: code });
+            });
+            activeRecordKeys.clear();
+        }
+        renderMacroEditor();
     }
 }
 
@@ -97,6 +108,7 @@ function onRecordKeyDown(e) {
     const hidCode = webCodeToHid[e.code];
     if (hidCode !== undefined) {
         if (e.repeat) return;
+        activeRecordKeys.add(hidCode);
         macros[currentMacroId].push({ type: 1, value: hidCode });
         renderMacroEditor();
     }
@@ -112,6 +124,7 @@ function onRecordKeyUp(e) {
 
     const hidCode = webCodeToHid[e.code];
     if (hidCode !== undefined) {
+        activeRecordKeys.delete(hidCode);
         macros[currentMacroId].push({ type: 2, value: hidCode });
         renderMacroEditor();
     }

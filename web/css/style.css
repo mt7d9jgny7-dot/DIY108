@@ -73,3 +73,6 @@ body { display: flex; height: 100vh; background-color: var(--bg-main); color: va
 .key-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; max-height: 400px; overflow-y: auto; }
 .key-btn { padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; text-align: center; font-size: 12px; background: #f9fafb; transition: 0.1s;}
 .key-btn:hover { background: #eff6ff; border-color: var(--primary); color: var(--primary); }
+/* 视图容器 */
+.sub-view { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.sub-view.active { display: flex; }

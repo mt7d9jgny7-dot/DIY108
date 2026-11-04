@@ -11,7 +11,7 @@ document.getElementById('readBtn')?.addEventListener('click', async () => {
             temp.set(fullBuffer); temp.set(chunk, fullBuffer.length); fullBuffer = temp;
         }
         
-        if (fullBuffer.length < TOTAL_BYTES) throw new Error(`数据包不完整 (${fullBuffer.length}/${TOTAL_BYTES})`);
+        if (fullBuffer.length < TOTAL_BYTES) throw new Error(`数据包不完整`);
 
         const dataView = new DataView(fullBuffer.buffer); let offset = 0;
         for (let l = 0; l < NUM_LAYERS; l++) 
@@ -28,6 +28,12 @@ document.getElementById('readBtn')?.addEventListener('click', async () => {
                 if (type !== 0) macros[m].push({ type, value });
             }
         }
+        
+        // 读取 kro_mode
+        const mode = fullBuffer[offset];
+        document.getElementById('mode6kro').checked = (mode === 0);
+        document.getElementById('modeNkro').checked = (mode === 1);
+
         renderKeyboard(); renderMacroEditor();
         alert("读取成功！");
     } catch (err) { alert("读取失败: " + err.message); }
@@ -53,6 +59,11 @@ document.getElementById('writeBtn')?.addEventListener('click', async () => {
                 offset += 3;
             }
         }
+        
+        // 写入 kro_mode
+        const mode = document.getElementById('modeNkro').checked ? 1 : 0;
+        view.setUint8(offset, mode);
+
         const fullArray = new Uint8Array(buffer); const numChunks = Math.ceil(TOTAL_BYTES / 64);
         for (let i = 0; i < numChunks; i++) {
             const chunk = new Uint8Array(64); chunk.fill(0); chunk.set(fullArray.slice(i * 64, i * 64 + 64));
@@ -60,4 +71,17 @@ document.getElementById('writeBtn')?.addEventListener('click', async () => {
         }
         alert("写入成功！请拔插键盘生效。");
     } catch (err) { alert("写入失败: " + err.message); }
+});
+
+// 🔥 固件重启指令
+document.getElementById('rebootBtn')?.addEventListener('click', async () => {
+    if (!device) return alert("请先连接设备");
+    if (!confirm("确定要让键盘进入刷写模式吗？进入后屏幕会弹出 U 盘。")) return;
+    
+    try {
+        // 发送空数据给 Report ID 6 触发重启
+        await device.sendFeatureReport(6, new Uint8Array(64));
+    } catch (err) {
+        alert("进入刷写模式失败，请手动按住 BOOT 键插拔 USB。\n" + err.message);
+    }
 });

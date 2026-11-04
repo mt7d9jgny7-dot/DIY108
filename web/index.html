@@ -2,63 +2,94 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>RP2040 键盘配置中心</title>
-    <!-- 🔥 修改路径为 css/style.css -->
+    <title>DIY108 键盘配置中心</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="sidebar">
-        <div class="logo">RP2040 KB</div>
-        <div class="menu-item active">设备</div>
-        <div class="menu-item">固件</div>
-        <div class="menu-item">设置</div>
+        <div class="logo">DIY108</div>
+        <!-- 绑定 switchMenu -->
+        <div class="menu-item active" onclick="switchMenu('device-view')">设备</div>
+        <div class="menu-item" onclick="switchMenu('firmware-view')">固件</div>
+        <div class="menu-item" onclick="switchMenu('settings-view')">设置</div>
         <div class="sidebar-footer">
             <button class="btn-connect" id="connectBtn">连接设备</button>
         </div>
     </div>
 
     <div class="main-content">
-        <div class="top-bar">
-            <div class="tab-group">
-                <div class="tab-item active" id="keymap-tab-title" onclick="switchTab('keymap-tab')">自定义按键</div>
-                <div class="tab-item" id="macro-tab-title" onclick="switchTab('macro-tab')">宏设置</div>
+        <!-- 1. 设备视图 (包含原来的按键和宏) -->
+        <div class="view-container active" id="device-view" style="display: flex; flex-direction: column; height: 100%;">
+            <div class="top-bar">
+                <div class="tab-group">
+                    <div class="tab-item active" id="keymap-tab-title" onclick="switchTab('keymap-tab')">自定义按键</div>
+                    <div class="tab-item" id="macro-tab-title" onclick="switchTab('macro-tab')">宏设置</div>
+                </div>
+                <span id="statusText" class="status-badge">未连接</span>
             </div>
-            <span id="statusText" class="status-badge">未连接</span>
-        </div>
-        
-        <div class="toolbar">
-            <button class="btn-action btn-primary" id="readBtn" disabled>📥 读取设备</button>
-            <button class="btn-action btn-success" id="writeBtn" disabled>💾 写入到设备</button>
-            <div class="layer-switch" id="layerSwitch">
-                <button class="layer-btn active" data-layer="0">普通层</button>
-                <button class="layer-btn" data-layer="1">FN 层</button>
+            
+            <div class="toolbar">
+                <button class="btn-action btn-primary" id="readBtn" disabled>📥 读取设备</button>
+                <button class="btn-action btn-success" id="writeBtn" disabled>💾 写入到设备</button>
+                <div class="layer-switch" id="layerSwitch">
+                    <button class="layer-btn active" data-layer="0">普通层</button>
+                    <button class="layer-btn" data-layer="1">FN 层</button>
+                </div>
+            </div>
+
+            <div class="sub-view active" id="keymap-tab">
+                <div class="keyboard-container">
+                    <div class="keyboard-board" id="keyboardBoard"></div>
+                </div>
+            </div>
+
+            <div class="sub-view" id="macro-tab">
+                <div class="macro-container">
+                    <div class="macro-sidebar">
+                        <h3>宏列表 (1-10)</h3>
+                        <ul class="macro-list" id="macroList"></ul>
+                    </div>
+                    <div class="macro-editor">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 id="macroTitle" style="margin: 0;">编辑 宏 1</h2>
+                            <button class="btn-action btn-primary" id="recordBtn" onclick="toggleMacroRecording()">🎙️ 开始录制</button>
+                        </div>
+                        <div class="action-list" id="actionList"></div>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn-action" onclick="addMacroAction('DOWN')">+ 按下键</button>
+                            <button class="btn-action" onclick="addMacroAction('UP')">+ 抬起键</button>
+                            <button class="btn-action" onclick="addMacroAction('DELAY')">+ 延迟(ms)</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="view-container active" id="keymap-tab">
-            <div class="keyboard-container">
-                <div class="keyboard-board" id="keyboardBoard"></div>
+        <!-- 2. 固件视图 -->
+        <div class="view-container" id="firmware-view" style="padding: 40px; overflow-y: auto;">
+            <h2 style="margin-bottom: 20px;">固件升级</h2>
+            <div style="background: white; padding: 30px; border-radius: 12px; border: 1px solid var(--border-color); max-width: 600px;">
+                <p style="margin-bottom: 20px; color: #555;">点击下方按钮，键盘会自动重启并进入刷写模式（弹出 RPI-RP2 磁盘）。之后将 `.uf2` 固件拖入磁盘即可。</p>
+                <button class="btn-action btn-primary" id="rebootBtn" disabled>🚀 重启进入刷写模式</button>
             </div>
         </div>
 
-        <div class="view-container" id="macro-tab">
-            <div class="macro-container">
-                <div class="macro-sidebar">
-                    <h3>宏列表 (1-10)</h3>
-                    <ul class="macro-list" id="macroList"></ul>
+        <!-- 3. 设置视图 -->
+        <div class="view-container" id="settings-view" style="padding: 40px; overflow-y: auto;">
+            <h2 style="margin-bottom: 20px;">设备设置</h2>
+            <div style="background: white; padding: 30px; border-radius: 12px; border: 1px solid var(--border-color); max-width: 600px;">
+                <h3 style="margin-bottom: 15px; font-size: 16px;">按键无冲模式 (KRO)</h3>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="kroMode" id="mode6kro" checked> 
+                        <span>6KRO (6 键无冲，兼容性最好)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="kroMode" id="modeNkro"> 
+                        <span>NKRO (全键无冲，可能需要重连生效)</span>
+                    </label>
                 </div>
-                <div class="macro-editor">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h2 id="macroTitle" style="margin: 0;">编辑 宏 1</h2>
-                        <button class="btn-action btn-primary" id="recordBtn" onclick="toggleMacroRecording()">🎙️ 开始录制</button>
-                    </div>
-                    <div class="action-list" id="actionList"></div>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn-action" onclick="addMacroAction('DOWN')">+ 按下键</button>
-                        <button class="btn-action" onclick="addMacroAction('UP')">+ 抬起键</button>
-                        <button class="btn-action" onclick="addMacroAction('DELAY')">+ 延迟(ms)</button>
-                    </div>
-                </div>
+                <p style="margin-top: 20px; font-size: 13px; color: #888;">注意：修改设置后，请回到“设备”页点击“写入到设备”进行保存。</p>
             </div>
         </div>
     </div>
@@ -70,7 +101,6 @@
         </div>
     </div>
 
-    <!-- 🔥 修改路径，加上 js/ 前缀 -->
     <script src="js/config.js"></script>
     <script src="js/keycodes.js"></script>
     <script src="js/layout_data.js"></script>

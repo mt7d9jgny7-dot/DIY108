@@ -6,8 +6,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include "pico/time.h"
+#include "pico/bootrom.h" // 🔥 引入 bootrom 用于重启
 
-#define TOTAL_WEBHID_SIZE (sizeof(keymap) + sizeof(macros))
+#define TOTAL_WEBHID_SIZE (sizeof(keymap) + sizeof(macros) + 1) // +1 为 kro_mode
 static uint8_t webhid_rx_buffer[2500];
 static uint16_t webhid_rx_len = 0;
 static uint64_t save_timer = 0;
@@ -19,6 +20,7 @@ void hid_task(void) {
     }
 
     uint8_t kb_report[8] = {0}; 
+    uint8_t nkro_report[32] = {0}; // NKRO 位图
     uint16_t cc_report = 0;
     uint8_t key_count = 0;
     int8_t mouse_dx = 0, mouse_dy = 0;
@@ -26,6 +28,7 @@ void hid_task(void) {
     int8_t mouse_wheel = 0;
     
     static uint8_t prev_kb_report[8] = {0};
+    static uint8_t prev_nkro_report[32] = {0};
     static uint16_t prev_cc_report = 0;
     static bool macro_triggered = false;
 
@@ -40,6 +43,7 @@ void hid_task(void) {
                         macro_triggered = true;
                     }
                 } else if (hid_code >= 0x200) {
+                    // ... (多媒体处理逻辑，保留原样) ...
                     switch (hid_code) {
                         case CC_MUTE: cc_report = 0xE2; break; case CC_VOLU: cc_report = 0xE9; break;
                         case CC_VOLD: cc_report = 0xEA; break; case CC_MPLY: cc_report = 0xCD; break;
@@ -52,6 +56,7 @@ void hid_task(void) {
                         case CC_PWR: cc_report = 0x30; break; case CC_SLEP: cc_report = 0x32; break;
                     }
                 } else if (hid_code >= 0x100) {
+                    // ... (鼠标处理逻辑，保留原样) ...
                     switch (hid_code) {
                         case MS_UP: mouse_dy -= 5; break; case MS_DOWN: mouse_dy += 5; break;
                         case MS_LEFT: mouse_dx -= 5; break; case MS_RIGHT: mouse_dx += 5; break;
@@ -60,16 +65,28 @@ void hid_task(void) {
                         case MS_WH_D: mouse_wheel = -1; break;
                     }
                 } else {
+                    // 标准按键处理
                     if (hid_code >= 0xE0 && hid_code <= 0xE7) {
                         kb_report[0] |= (1 << (hid_code - 0xE0));
+                        nkro_report[0] |= (1 << (hid_code - 0xE0));
                     } else if (hid_code != HID_NONE && hid_code != MO_FN) {
-                        if (key_count < 6) { kb_report[2 + key_count] = (uint8_t)hid_code; key_count++; }
+                        if (key_count < 6) { 
+                            kb_report[2 + key_count] = (uint8_t)hid_code; 
+                            key_count++; 
+                        }
+                        // 写入 NKRO 位图 (位移计算)
+                        if (hid_code > 0 && hid_code < 256) {
+                            uint8_t byte_idx = 1 + (hid_code / 8);
+                            uint8_t bit_idx = hid_code % 8;
+                            if(byte_idx < 32) nkro_report[byte_idx] |= (1 << bit_idx);
+                        }
                     }
                 }
             }
         }
     }
     
+    // ... (宏防抖逻辑保留原样) ...
     bool any_macro_key = false;
     for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
         for (uint8_t c = 0; c < MATRIX_COLS; c++) {
@@ -83,10 +100,20 @@ void hid_task(void) {
     macro_task(kb_report, &key_count);
 
     if (!tud_hid_ready()) return;
-    if (memcmp(kb_report, prev_kb_report, 8) != 0) {
-        tud_hid_keyboard_report(1, kb_report[0], &kb_report[2]);
-        memcpy(prev_kb_report, kb_report, 8);
+    
+    // 根据 kro_mode 发送报文
+    if (kro_mode == 0) {
+        if (memcmp(kb_report, prev_kb_report, 8) != 0) {
+            tud_hid_keyboard_report(1, kb_report[0], &kb_report[2]);
+            memcpy(prev_kb_report, kb_report, 8);
+        }
+    } else {
+        if (memcmp(nkro_report, prev_nkro_report, 32) != 0) {
+            tud_hid_report(5, nkro_report, 32);
+            memcpy(prev_nkro_report, nkro_report, 32);
+        }
     }
+
     if (cc_report != prev_cc_report) {
         tud_hid_report(3, &cc_report, sizeof(cc_report));
         prev_cc_report = cc_report;
@@ -96,36 +123,38 @@ void hid_task(void) {
     }
 }
 
-// ---------------- TinyUSB 回调 ----------------
 static uint32_t webhid_tx_offset = 0;
 
 uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
     if (report_id == 4 && report_type == HID_REPORT_TYPE_FEATURE) {
         if (webhid_tx_offset >= TOTAL_WEBHID_SIZE) webhid_tx_offset = 0; 
-        
         uint16_t copy_len = 64;
         if (webhid_tx_offset + copy_len > TOTAL_WEBHID_SIZE) {
             copy_len = TOTAL_WEBHID_SIZE - webhid_tx_offset;
         }
-
-        // 关键修复：不使用 malloc，直接在 buffer 上分段拷贝，防止内存分配失败导致越界崩溃
         uint16_t copied = 0;
-        
         if (webhid_tx_offset < sizeof(keymap)) {
             uint16_t rem = sizeof(keymap) - webhid_tx_offset;
             uint16_t take = rem < copy_len ? rem : copy_len;
             memcpy(buffer, (uint8_t *)keymap + webhid_tx_offset, take);
             copied += take;
         }
-        
         if (copied < copy_len) {
             uint16_t macro_offset = 0;
             if (webhid_tx_offset + copied >= sizeof(keymap)) {
                 macro_offset = (webhid_tx_offset + copied) - sizeof(keymap);
             }
-            memcpy(buffer + copied, (uint8_t *)macros + macro_offset, copy_len - copied);
+            if (macro_offset < sizeof(macros)) {
+                uint16_t rem = sizeof(macros) - macro_offset;
+                uint16_t take = rem < (copy_len - copied) ? rem : (copy_len - copied);
+                memcpy(buffer + copied, (uint8_t *)macros + macro_offset, take);
+                copied += take;
+            }
         }
-
+        if (copied < copy_len) {
+            buffer[copied] = kro_mode;
+            copied++;
+        }
         webhid_tx_offset += copy_len;
         return copy_len;
     }
@@ -133,22 +162,24 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 }
 
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
+    // 🔥 接收 ID 6，进入 BOOT 模式
+    if (report_id == 6 && report_type == HID_REPORT_TYPE_FEATURE) {
+        reset_usb_boot(0, 0); // 重启到 RPI-RP2
+        return;
+    }
+
     if (report_id == 4 && report_type == HID_REPORT_TYPE_FEATURE) {
-        if (bufsize == 65 && buffer[0] == 0x04) {
-            buffer++; bufsize--;
-        }
+        if (bufsize == 65 && buffer[0] == 0x04) { buffer++; bufsize--; }
         if (webhid_rx_len + bufsize <= sizeof(webhid_rx_buffer)) {
             memcpy(webhid_rx_buffer + webhid_rx_len, buffer, bufsize);
             webhid_rx_len += bufsize;
-            
             if (webhid_rx_len >= TOTAL_WEBHID_SIZE) {
                 memcpy(keymap, webhid_rx_buffer, sizeof(keymap));
                 memcpy(macros, webhid_rx_buffer + sizeof(keymap), sizeof(macros));
+                kro_mode = webhid_rx_buffer[sizeof(keymap) + sizeof(macros)];
                 webhid_rx_len = 0; 
                 save_timer = time_us_64() + 500000; 
             }
-        } else {
-            webhid_rx_len = 0; 
-        }
+        } else { webhid_rx_len = 0; }
     }
 }
