@@ -14,11 +14,13 @@ document.getElementById('readBtn')?.addEventListener('click', async () => {
         if (fullBuffer.length < TOTAL_BYTES) throw new Error(`数据包不完整`);
 
         const dataView = new DataView(fullBuffer.buffer); let offset = 0;
+        // 解析键位
         for (let l = 0; l < NUM_LAYERS; l++) 
             for (let r = 0; r < NUM_ROWS; r++) 
                 for (let c = 0; c < NUM_COLS; c++) {
                     keymap[l][r][c] = dataView.getUint16(offset, true); offset += 2;
                 }
+        // 解析宏
         for (let m = 0; m < MAX_MACROS; m++) {
             macros[m] = [];
             for (let s = 0; s < MAX_MACRO_STEPS; s++) {
@@ -28,8 +30,7 @@ document.getElementById('readBtn')?.addEventListener('click', async () => {
                 if (type !== 0) macros[m].push({ type, value });
             }
         }
-        
-        // 读取 kro_mode
+        // 解析模式
         const mode = fullBuffer[offset];
         document.getElementById('mode6kro').checked = (mode === 0);
         document.getElementById('modeNkro').checked = (mode === 1);
@@ -42,6 +43,21 @@ document.getElementById('readBtn')?.addEventListener('click', async () => {
 document.getElementById('writeBtn')?.addEventListener('click', async () => {
     if (!device) return;
     try {
+        // 🔥 关键修复：写入前强制补全所有按下却没有抬起的按键，防止宏死锁
+        for (let m = 0; m < MAX_MACROS; m++) {
+            let pendingKeys = new Set();
+            for (let s = 0; s < macros[m].length; s++) {
+                if (macros[m][s].type === 1) pendingKeys.add(macros[m][s].value);
+                if (macros[m][s].type === 2) pendingKeys.delete(macros[m][s].value);
+            }
+            // 如果有键没抬起，自动追加抬起动作
+            pendingKeys.forEach(key => {
+                if (macros[m].length < MAX_MACRO_STEPS) {
+                    macros[m].push({ type: 2, value: key });
+                }
+            });
+        }
+
         const buffer = new ArrayBuffer(TOTAL_BYTES); const view = new DataView(buffer); let offset = 0;
         for (let l = 0; l < NUM_LAYERS; l++) 
             for (let r = 0; r < NUM_ROWS; r++) 
@@ -59,8 +75,6 @@ document.getElementById('writeBtn')?.addEventListener('click', async () => {
                 offset += 3;
             }
         }
-        
-        // 写入 kro_mode
         const mode = document.getElementById('modeNkro').checked ? 1 : 0;
         view.setUint8(offset, mode);
 
@@ -73,13 +87,11 @@ document.getElementById('writeBtn')?.addEventListener('click', async () => {
     } catch (err) { alert("写入失败: " + err.message); }
 });
 
-// 🔥 固件重启指令
+// 固件重启指令
 document.getElementById('rebootBtn')?.addEventListener('click', async () => {
     if (!device) return alert("请先连接设备");
     if (!confirm("确定要让键盘进入刷写模式吗？进入后屏幕会弹出 U 盘。")) return;
-    
     try {
-        // 发送空数据给 Report ID 6 触发重启
         await device.sendFeatureReport(6, new Uint8Array(64));
     } catch (err) {
         alert("进入刷写模式失败，请手动按住 BOOT 键插拔 USB。\n" + err.message);

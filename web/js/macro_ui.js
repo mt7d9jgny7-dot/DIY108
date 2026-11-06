@@ -64,7 +64,7 @@ function addMacroAction(typeStr) {
 // 宏录制逻辑
 let isRecording = false;
 let lastRecordTime = 0;
-let activeRecordKeys = new Set(); // 🔥 记录当前按住未松开的键
+let activeRecordKeys = new Set(); 
 
 function toggleMacroRecording() {
     isRecording = !isRecording;
@@ -86,7 +86,7 @@ function toggleMacroRecording() {
         window.removeEventListener('keydown', onRecordKeyDown);
         window.removeEventListener('keyup', onRecordKeyUp);
         
-        // 🔥 关键修复：如果停止录制时还有键被按住，自动补全抬起动作，防止宏死锁
+        // 停止时强制补全抬起动作
         if (activeRecordKeys.size > 0) {
             activeRecordKeys.forEach(code => {
                 macros[currentMacroId].push({ type: 2, value: code });
