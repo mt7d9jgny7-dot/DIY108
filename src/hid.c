@@ -6,9 +6,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include "pico/time.h"
-#include "pico/bootrom.h" // 🔥 引入 bootrom 用于重启
+#include "pico/bootrom.h"
 
-#define TOTAL_WEBHID_SIZE (sizeof(keymap) + sizeof(macros) + 1) // +1 为 kro_mode
+#define TOTAL_WEBHID_SIZE (sizeof(keymap) + sizeof(macros) + 1)
 static uint8_t webhid_rx_buffer[2500];
 static uint16_t webhid_rx_len = 0;
 static uint64_t save_timer = 0;
@@ -20,7 +20,7 @@ void hid_task(void) {
     }
 
     uint8_t kb_report[8] = {0}; 
-    uint8_t nkro_report[32] = {0}; // NKRO 位图
+    uint8_t nkro_report[32] = {0}; 
     uint16_t cc_report = 0;
     uint8_t key_count = 0;
     int8_t mouse_dx = 0, mouse_dy = 0;
@@ -43,7 +43,6 @@ void hid_task(void) {
                         macro_triggered = true;
                     }
                 } else if (hid_code >= 0x200) {
-                    // ... (多媒体处理逻辑，保留原样) ...
                     switch (hid_code) {
                         case CC_MUTE: cc_report = 0xE2; break; case CC_VOLU: cc_report = 0xE9; break;
                         case CC_VOLD: cc_report = 0xEA; break; case CC_MPLY: cc_report = 0xCD; break;
@@ -56,7 +55,6 @@ void hid_task(void) {
                         case CC_PWR: cc_report = 0x30; break; case CC_SLEP: cc_report = 0x32; break;
                     }
                 } else if (hid_code >= 0x100) {
-                    // ... (鼠标处理逻辑，保留原样) ...
                     switch (hid_code) {
                         case MS_UP: mouse_dy -= 5; break; case MS_DOWN: mouse_dy += 5; break;
                         case MS_LEFT: mouse_dx -= 5; break; case MS_RIGHT: mouse_dx += 5; break;
@@ -65,7 +63,6 @@ void hid_task(void) {
                         case MS_WH_D: mouse_wheel = -1; break;
                     }
                 } else {
-                    // 标准按键处理
                     if (hid_code >= 0xE0 && hid_code <= 0xE7) {
                         kb_report[0] |= (1 << (hid_code - 0xE0));
                         nkro_report[0] |= (1 << (hid_code - 0xE0));
@@ -74,8 +71,8 @@ void hid_task(void) {
                             kb_report[2 + key_count] = (uint8_t)hid_code; 
                             key_count++; 
                         }
-                        // 写入 NKRO 位图 (位移计算)
-                        if (hid_code > 0 && hid_code < 256) {
+                        // 🔥 修复位图偏移：从第 1 字节开始算（第 0 字节是 Modifier）
+                        if (hid_code > 0 && hid_code < 248) {
                             uint8_t byte_idx = 1 + (hid_code / 8);
                             uint8_t bit_idx = hid_code % 8;
                             if(byte_idx < 32) nkro_report[byte_idx] |= (1 << bit_idx);
@@ -86,7 +83,6 @@ void hid_task(void) {
         }
     }
     
-    // ... (宏防抖逻辑保留原样) ...
     bool any_macro_key = false;
     for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
         for (uint8_t c = 0; c < MATRIX_COLS; c++) {
@@ -101,16 +97,17 @@ void hid_task(void) {
 
     if (!tud_hid_ready()) return;
     
-    // 根据 kro_mode 发送报文
-    if (kro_mode == 0) {
-        if (memcmp(kb_report, prev_kb_report, 8) != 0) {
-            tud_hid_keyboard_report(1, kb_report[0], &kb_report[2]);
-            memcpy(prev_kb_report, kb_report, 8);
-        }
-    } else {
+    // 🔥 严格根据 kro_mode 发送报文
+    if (kro_mode == 1) {
         if (memcmp(nkro_report, prev_nkro_report, 32) != 0) {
             tud_hid_report(5, nkro_report, 32);
             memcpy(prev_nkro_report, nkro_report, 32);
+        }
+    } else {
+        // kro_mode 非 1 的时候强制走 6KRO，保证不会失联
+        if (memcmp(kb_report, prev_kb_report, 8) != 0) {
+            tud_hid_keyboard_report(1, kb_report[0], &kb_report[2]);
+            memcpy(prev_kb_report, kb_report, 8);
         }
     }
 
@@ -162,9 +159,8 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 }
 
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
-    // 🔥 接收 ID 6，进入 BOOT 模式
     if (report_id == 6 && report_type == HID_REPORT_TYPE_FEATURE) {
-        reset_usb_boot(0, 0); // 重启到 RPI-RP2
+        reset_usb_boot(0, 0);
         return;
     }
 
@@ -177,6 +173,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
                 memcpy(keymap, webhid_rx_buffer, sizeof(keymap));
                 memcpy(macros, webhid_rx_buffer + sizeof(keymap), sizeof(macros));
                 kro_mode = webhid_rx_buffer[sizeof(keymap) + sizeof(macros)];
+                if (kro_mode > 1) kro_mode = 0; // 容错防止卡死
                 webhid_rx_len = 0; 
                 save_timer = time_us_64() + 500000; 
             }

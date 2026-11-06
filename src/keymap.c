@@ -32,6 +32,11 @@ void load_keymap_from_flash(void) {
         memcpy(macros, flash_data + MACRO_OFFSET, sizeof(macros));
         kro_mode = flash_data[KRO_OFFSET];
     }
+    
+        // 🔥 强制校验，防止从 Flash 读出非法模式导致全键失灵
+    if (kro_mode > 1) {
+        kro_mode = 0; 
+    }
 }
 
 void save_keymap_to_flash(void) {
