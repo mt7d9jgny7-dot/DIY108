@@ -14,6 +14,8 @@ add_executable(rp2040_film_kb
     src/matrix.c
     src/hid.c
     src/macro.c
+    src/report.c
+    src/webhid.c
 )
 
 # 🔥 关键：将 include 和 src 目录都加入头文件搜索路径

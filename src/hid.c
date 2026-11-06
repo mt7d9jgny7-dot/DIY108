@@ -3,35 +3,23 @@
 #include "keymap.h"
 #include "keycodes.h"
 #include "macro.h"
-#include <string.h>
-#include <stdlib.h>
-#include "pico/time.h"
-#include "pico/bootrom.h"
-
-#define TOTAL_WEBHID_SIZE (sizeof(keymap) + sizeof(macros) + 1)
-static uint8_t webhid_rx_buffer[2500];
-static uint16_t webhid_rx_len = 0;
-static uint64_t save_timer = 0;
+#include "report.h"
+#include "webhid.h"
 
 void hid_task(void) {
-    if (save_timer != 0 && time_us_64() > save_timer) {
-        save_timer = 0;
-        save_keymap_to_flash();
-    }
+    // 1. 处理 WebHID 后台延迟保存
+    webhid_task();
 
     uint8_t kb_report[8] = {0}; 
-    uint8_t nkro_report[32] = {0}; 
+    uint8_t nkro_bitmap[31] = {0}; 
     uint16_t cc_report = 0;
     uint8_t key_count = 0;
     int8_t mouse_dx = 0, mouse_dy = 0;
     uint8_t mouse_btn = 0;
     int8_t mouse_wheel = 0;
-    
-    static uint8_t prev_kb_report[8] = {0};
-    static uint8_t prev_nkro_report[32] = {0};
-    static uint16_t prev_cc_report = 0;
     static bool macro_triggered = false;
 
+    // 2. 扫描矩阵组装报文
     for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
         for (uint8_t c = 0; c < MATRIX_COLS; c++) {
             if (matrix_state[r][c]) {
@@ -63,19 +51,21 @@ void hid_task(void) {
                         case MS_WH_D: mouse_wheel = -1; break;
                     }
                 } else {
+                    // 标准按键：修饰键
                     if (hid_code >= 0xE0 && hid_code <= 0xE7) {
                         kb_report[0] |= (1 << (hid_code - 0xE0));
-                        nkro_report[0] |= (1 << (hid_code - 0xE0));
-                    } else if (hid_code != HID_NONE && hid_code != MO_FN) {
+                    } 
+                    // 标准按键：普通键
+                    else if (hid_code >= 0x04 && hid_code <= 0xDF) {
                         if (key_count < 6) { 
                             kb_report[2 + key_count] = (uint8_t)hid_code; 
                             key_count++; 
                         }
-                        // 🔥 修复位图偏移：从第 1 字节开始算（第 0 字节是 Modifier）
-                        if (hid_code > 0 && hid_code < 248) {
-                            uint8_t byte_idx = 1 + (hid_code / 8);
-                            uint8_t bit_idx = hid_code % 8;
-                            if(byte_idx < 32) nkro_report[byte_idx] |= (1 << bit_idx);
+                        // 填充 NKRO 位图
+                        uint8_t byte_idx = (hid_code - 0x04) / 8;
+                        uint8_t bit_idx = (hid_code - 0x04) % 8;
+                        if (byte_idx < 31) {
+                            nkro_bitmap[byte_idx] |= (1 << bit_idx);
                         }
                     }
                 }
@@ -83,6 +73,7 @@ void hid_task(void) {
         }
     }
     
+    // 3. 宏触发复位
     bool any_macro_key = false;
     for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
         for (uint8_t c = 0; c < MATRIX_COLS; c++) {
@@ -93,90 +84,18 @@ void hid_task(void) {
     }
     if (!any_macro_key) macro_triggered = false;
 
+    // 4. 执行宏（宏只会修改 6KRO 报文）
     macro_task(kb_report, &key_count);
 
-    if (!tud_hid_ready()) return;
-    
-    // 🔥 严格根据 kro_mode 发送报文
+    // 5. 分发报文发送
     if (kro_mode == 1) {
-        if (memcmp(nkro_report, prev_nkro_report, 32) != 0) {
-            tud_hid_report(5, nkro_report, 32);
-            memcpy(prev_nkro_report, nkro_report, 32);
-        }
+        send_nkro_report(kb_report[0], nkro_bitmap);
+        send_keyboard_report(0, (uint8_t[6]){0}, 0); // 清空 6KRO 防止卡键
     } else {
-        // kro_mode 非 1 的时候强制走 6KRO，保证不会失联
-        if (memcmp(kb_report, prev_kb_report, 8) != 0) {
-            tud_hid_keyboard_report(1, kb_report[0], &kb_report[2]);
-            memcpy(prev_kb_report, kb_report, 8);
-        }
+        send_keyboard_report(kb_report[0], &kb_report[2], key_count);
+        send_nkro_report(0, (uint8_t[31]){0});       // 清空 NKRO 防止卡键
     }
 
-    if (cc_report != prev_cc_report) {
-        tud_hid_report(3, &cc_report, sizeof(cc_report));
-        prev_cc_report = cc_report;
-    }
-    if (mouse_dx || mouse_dy || mouse_btn || mouse_wheel) {
-        tud_hid_mouse_report(2, mouse_btn, mouse_dx, mouse_dy, mouse_wheel, 0);
-    }
-}
-
-static uint32_t webhid_tx_offset = 0;
-
-uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
-    if (report_id == 4 && report_type == HID_REPORT_TYPE_FEATURE) {
-        if (webhid_tx_offset >= TOTAL_WEBHID_SIZE) webhid_tx_offset = 0; 
-        uint16_t copy_len = 64;
-        if (webhid_tx_offset + copy_len > TOTAL_WEBHID_SIZE) {
-            copy_len = TOTAL_WEBHID_SIZE - webhid_tx_offset;
-        }
-        uint16_t copied = 0;
-        if (webhid_tx_offset < sizeof(keymap)) {
-            uint16_t rem = sizeof(keymap) - webhid_tx_offset;
-            uint16_t take = rem < copy_len ? rem : copy_len;
-            memcpy(buffer, (uint8_t *)keymap + webhid_tx_offset, take);
-            copied += take;
-        }
-        if (copied < copy_len) {
-            uint16_t macro_offset = 0;
-            if (webhid_tx_offset + copied >= sizeof(keymap)) {
-                macro_offset = (webhid_tx_offset + copied) - sizeof(keymap);
-            }
-            if (macro_offset < sizeof(macros)) {
-                uint16_t rem = sizeof(macros) - macro_offset;
-                uint16_t take = rem < (copy_len - copied) ? rem : (copy_len - copied);
-                memcpy(buffer + copied, (uint8_t *)macros + macro_offset, take);
-                copied += take;
-            }
-        }
-        if (copied < copy_len) {
-            buffer[copied] = kro_mode;
-            copied++;
-        }
-        webhid_tx_offset += copy_len;
-        return copy_len;
-    }
-    return 0;
-}
-
-void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
-    if (report_id == 6 && report_type == HID_REPORT_TYPE_FEATURE) {
-        reset_usb_boot(0, 0);
-        return;
-    }
-
-    if (report_id == 4 && report_type == HID_REPORT_TYPE_FEATURE) {
-        if (bufsize == 65 && buffer[0] == 0x04) { buffer++; bufsize--; }
-        if (webhid_rx_len + bufsize <= sizeof(webhid_rx_buffer)) {
-            memcpy(webhid_rx_buffer + webhid_rx_len, buffer, bufsize);
-            webhid_rx_len += bufsize;
-            if (webhid_rx_len >= TOTAL_WEBHID_SIZE) {
-                memcpy(keymap, webhid_rx_buffer, sizeof(keymap));
-                memcpy(macros, webhid_rx_buffer + sizeof(keymap), sizeof(macros));
-                kro_mode = webhid_rx_buffer[sizeof(keymap) + sizeof(macros)];
-                if (kro_mode > 1) kro_mode = 0; // 容错防止卡死
-                webhid_rx_len = 0; 
-                save_timer = time_us_64() + 500000; 
-            }
-        } else { webhid_rx_len = 0; }
-    }
+    send_consumer_report(cc_report);
+    send_mouse_report(mouse_btn, mouse_dx, mouse_dy, mouse_wheel);
 }
